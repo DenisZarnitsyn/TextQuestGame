@@ -1,6 +1,5 @@
 package game;
 
-
 import loading.QuestionLoader;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,32 +9,45 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
-
 
 @Getter
 @Setter
 public class GameProcessor {
-    private static final Logger logger = LoggerFactory.getLogger(GameProcessor.class);
+    private final Logger logger = LoggerFactory.getLogger(GameProcessor.class);
 
     private List<Question> questions;
     private int currentQuestionIndex;
     private String playerName;
-    @Setter
     private HttpServletRequest request;
     private String gameResult;
     private String winnerName;
+    private final QuestionLoader questionLoader;
 
-    public GameProcessor() {
-        List<Question> loadedQuestions = QuestionLoader.loadQuestions();
+    public GameProcessor(QuestionLoader questionLoader) {
+        this.questionLoader = questionLoader;
+        try {
+            initializeGameProcessor();
+        } catch (IOException e) {
+            logger.error("Failed to initialize GameProcessor", e);
+        }
+    }
 
-        if (Objects.nonNull(loadedQuestions) && !loadedQuestions.isEmpty()) {
-            this.questions = loadedQuestions;
-            this.currentQuestionIndex = 0;
-            logger.info("GameProcessor initialized successfully.");
-        } else {
-            logger.error("Failed to load questions. The game cannot be initialized.");
+    protected void initializeGameProcessor() throws IOException {
+        try {
+            List<Question> loadedQuestions = questionLoader.loadQuestions();
+
+            if (loadedQuestions != null && !loadedQuestions.isEmpty()) {
+                this.questions = loadedQuestions;
+                this.currentQuestionIndex = 0;
+                logger.info("GameProcessor initialized successfully.");
+            } else {
+                logger.error("Failed to load questions. The game cannot be initialized. No questions loaded.");
+                throw new IOException("No questions loaded.");
+            }
+        } catch (IOException e) {
+            logger.error("Failed to load questions. The game cannot be initialized.", e);
         }
     }
 

@@ -24,15 +24,14 @@ public class StartGameServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String playerName = request.getParameter("userName");
 
-        GameProcessor gameProcessor = new GameProcessor();
+        QuestionLoader questionLoader = new QuestionLoader();
+        List<Question> questions = questionLoader.loadQuestions();
+
+        GameProcessor gameProcessor = new GameProcessor(questionLoader);
         gameProcessor.setPlayerName(playerName);
         gameProcessor.setRequest(request);
 
         request.getSession().setAttribute("gameProcessor", gameProcessor);
-
-        QuestionLoader questionLoader = new QuestionLoader();
-        List<Question> questions = questionLoader.loadQuestions();
-
         request.getSession().setAttribute("questions", questions);
 
         response.sendRedirect(request.getContextPath() + "/game");
