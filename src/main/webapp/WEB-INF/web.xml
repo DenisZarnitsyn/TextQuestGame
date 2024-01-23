@@ -1,7 +1,38 @@
-<!DOCTYPE web-app PUBLIC
- "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
- "http://java.sun.com/dtd/web-app_2_3.dtd" >
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+         version="4.0">
 
-<web-app>
-  <display-name>Archetype Created Web Application</display-name>
+  <servlet>
+    <servlet-name>StartGameServlet</servlet-name>
+    <servlet-class>servlets.StartGameServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>StartGameServlet</servlet-name>
+    <url-pattern>/start-game</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+    <servlet-name>GameServlet</servlet-name>
+    <servlet-class>servlets.GameServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>GameServlet</servlet-name>
+    <url-pattern>/game</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+    <servlet-name>GameOverServlet</servlet-name>
+    <servlet-class>servlets.GameOverServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>GameOverServlet</servlet-name>
+    <url-pattern>/game-over</url-pattern>
+  </servlet-mapping>
+
+  <welcome-file-list>
+    <welcome-file>start-game</welcome-file>
+  </welcome-file-list>
+
 </web-app>
