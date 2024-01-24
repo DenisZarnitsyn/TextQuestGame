@@ -9,8 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
 import java.util.List;
+
 
 @Getter
 @Setter
@@ -27,27 +27,18 @@ public class GameProcessor {
 
     public GameProcessor(QuestionLoader questionLoader) {
         this.questionLoader = questionLoader;
-        try {
-            initializeGameProcessor();
-        } catch (IOException e) {
-            logger.error("Failed to initialize GameProcessor", e);
-        }
+        initializeGameProcessor();
     }
 
-    protected void initializeGameProcessor() throws IOException {
-        try {
-            List<Question> loadedQuestions = questionLoader.loadQuestions();
+    protected void initializeGameProcessor() {
+        List<Question> loadedQuestions = questionLoader.loadQuestions();
 
-            if (loadedQuestions != null && !loadedQuestions.isEmpty()) {
-                this.questions = loadedQuestions;
-                this.currentQuestionIndex = 0;
-                logger.info("GameProcessor initialized successfully.");
-            } else {
-                logger.error("Failed to load questions. The game cannot be initialized. No questions loaded.");
-                throw new IOException("No questions loaded.");
-            }
-        } catch (IOException e) {
-            logger.error("Failed to load questions. The game cannot be initialized.", e);
+        if (loadedQuestions != null && !loadedQuestions.isEmpty()) {
+            this.questions = loadedQuestions;
+            this.currentQuestionIndex = 0;
+            logger.info("GameProcessor initialized successfully.");
+        } else {
+            logger.error("Failed to load questions. The game cannot be initialized. No questions loaded.");
         }
     }
 

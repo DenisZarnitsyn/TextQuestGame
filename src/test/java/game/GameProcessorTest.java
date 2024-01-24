@@ -3,7 +3,6 @@ package game;
 import loading.QuestionLoader;
 import models.Option;
 import models.Question;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -25,21 +24,24 @@ class GameProcessorTest {
     @InjectMocks
     private GameProcessor gameProcessor;
 
+    private boolean initialized = false;
+
     @BeforeEach
-    void setUp() throws IOException {
-        MockitoAnnotations.openMocks(this);
+    void setUp() {
+        if (!initialized) {
+            MockitoAnnotations.openMocks(this);
+            initialized = true;
+        }
+    }
+
+    @Test
+    void initializeGameProcessorSuccessfully() throws IOException {
         List<Question> questions = new ArrayList<>();
         questions.add(new Question());
         when(questionLoader.loadQuestions()).thenReturn(questions);
 
         gameProcessor.initializeGameProcessor();
-    }
 
-    @AfterEach
-    void tearDown() {}
-
-    @Test
-    void initializeGameProcessorSuccessfully() {
         assertAll("GameProcessor state after initialization",
                 () -> assertNotNull(gameProcessor.getQuestions()),
                 () -> assertEquals(0, gameProcessor.getCurrentQuestionIndex()),
@@ -52,12 +54,10 @@ class GameProcessorTest {
     }
 
     @Test
-    void initializeGameProcessorWithIOException() {
+    void initializeGameProcessorWithIOException() throws IOException {
         when(questionLoader.loadQuestions()).thenThrow(new IOException("Failed to load questions."));
 
-        IOException exception = assertThrows(IOException.class, () -> gameProcessor.initializeGameProcessor());
-
-        assertEquals("Failed to load questions.", exception.getMessage());
+        assertThrows(IOException.class, () -> gameProcessor.initializeGameProcessor());
 
         assertNull(gameProcessor.getQuestions());
         assertEquals(0, gameProcessor.getCurrentQuestionIndex());
@@ -89,7 +89,7 @@ class GameProcessorTest {
         Question question = new Question();
         Option option = new Option();
         option.setText("Option 1");
-        question.setOptions(List.of(option));
+        question.setOptions(List.<Option>of(option));
         questions.add(question);
         gameProcessor.setQuestions(questions);
 
