@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -89,26 +90,34 @@ public class GameProcessor {
                 .ifPresent(question -> currentQuestionIndex = questions.indexOf(question));
     }
 
-    private void handleGameOver() {
+    protected void handleGameOver() {
         endGame(false);
         gameResult = "lost";
         winnerName = playerName;
     }
 
-    private void handleGameWin() {
+    protected void handleGameWin() {
         endGame(true);
         gameResult = "won";
         winnerName = playerName;
     }
 
-    private void endGame(boolean isGameWon) {
-        questions.clear();
-        currentQuestionIndex = 0;
-
+    protected void endGame(boolean isGameWon) {
         if (isGameWon) {
+            gameResult = "won";
+            winnerName = playerName;
             logger.info("Congratulations! You won the game.");
         } else {
+            gameResult = "lost";
+            winnerName = playerName;
             logger.info("Game over. You lost.");
         }
+
+        questions = Collections.emptyList();
+        currentQuestionIndex = 0;
+    }
+
+    public void setRequest(HttpServletRequest request) {
+        this.request = request;
     }
 }

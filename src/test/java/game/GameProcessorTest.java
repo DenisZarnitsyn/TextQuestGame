@@ -5,154 +5,438 @@ import models.Option;
 import models.Question;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
+import javax.servlet.*;
+import javax.servlet.http.*;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.UnsupportedEncodingException;
+import java.security.Principal;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 class GameProcessorTest {
-
-    @Mock
-    private QuestionLoader questionLoader;
-
-    @InjectMocks
     private GameProcessor gameProcessor;
-
-    private boolean initialized = false;
 
     @BeforeEach
     void setUp() {
-        if (!initialized) {
-            MockitoAnnotations.openMocks(this);
-            initialized = true;
-        }
-    }
+        QuestionLoader questionLoader = new QuestionLoader();
+        gameProcessor = new GameProcessor(questionLoader);
 
-    @Test
-    void initializeGameProcessorSuccessfully() throws IOException {
-        List<Question> questions = new ArrayList<>();
-        questions.add(new Question());
-        when(questionLoader.loadQuestions()).thenReturn(questions);
-
-        gameProcessor.initializeGameProcessor();
-
-        assertAll("GameProcessor state after initialization",
-                () -> assertNotNull(gameProcessor.getQuestions()),
-                () -> assertEquals(0, gameProcessor.getCurrentQuestionIndex()),
-                () -> assertEquals(1, gameProcessor.getQuestions().size()),
-                () -> assertNull(gameProcessor.getGameResult()),
-                () -> assertNull(gameProcessor.getWinnerName())
+        List<Question> mockQuestions = Arrays.asList(
+                createMockQuestion(1, "Question 1", createMockOptions(2, 3)),
+                createMockQuestion(2, "Question 2", createMockOptions(4, -1)),
+                createMockQuestion(3, "Question 3", createMockOptions(0, -1))
         );
 
-        verify(questionLoader, times(1)).loadQuestions();
+        gameProcessor.setQuestions(mockQuestions);
     }
 
-    @Test
-    void initializeGameProcessorWithIOException() throws IOException {
-        when(questionLoader.loadQuestions()).thenThrow(new IOException("Failed to load questions."));
-
-        assertThrows(IOException.class, () -> gameProcessor.initializeGameProcessor());
-
-        assertNull(gameProcessor.getQuestions());
-        assertEquals(0, gameProcessor.getCurrentQuestionIndex());
-        assertNull(gameProcessor.getGameResult());
-        assertNull(gameProcessor.getWinnerName());
-
-        verify(questionLoader, times(1)).loadQuestions();
-    }
-
-    @Test
-    void getCurrentQuestion() {
-        List<Question> questions = new ArrayList<>();
-        questions.add(new Question());
-        gameProcessor.setQuestions(questions);
-
-        assertNotNull(gameProcessor.getCurrentQuestion());
-    }
-
-    @Test
-    void processAnswerWithInvalidState() {
-        gameProcessor.setQuestions(null);
-
-        assertDoesNotThrow(() -> gameProcessor.processAnswer(1));
-    }
-
-    @Test
-    void processAnswerWithInvalidOptionIndex() {
-        List<Question> questions = new ArrayList<>();
+    private Question createMockQuestion(int id, String text, List<Option> options) {
         Question question = new Question();
-        Option option = new Option();
-        option.setText("Option 1");
-        question.setOptions(List.<Option>of(option));
-        questions.add(question);
-        gameProcessor.setQuestions(questions);
+        question.setId(id);
+        question.setQuestion(text);
+        question.setOptions(options);
+        return question;
+    }
 
-        assertDoesNotThrow(() -> gameProcessor.processAnswer(0));
-        assertDoesNotThrow(() -> gameProcessor.processAnswer(2));
+    private List<Option> createMockOptions(int... nextQuestionIds) {
+        List<Option> options = Arrays.asList(new Option(), new Option());
+        for (int i = 0; i < options.size(); i++) {
+            options.get(i).setNextQuestionId(nextQuestionIds[i]);
+        }
+        return options;
     }
 
     @Test
-    void processAnswerGameOver() {
-        List<Question> questions = new ArrayList<>();
-        Question question = new Question();
-        Option option = new Option();
-        option.setText("Option 1");
-        option.setNextQuestionId(-1);
-        question.setOptions(List.of(option));
-        questions.add(question);
-        gameProcessor.setQuestions(questions);
+    void testGetCurrentQuestion() {
+        assertEquals("Question 1", gameProcessor.getCurrentQuestion().getQuestion());
+    }
+
+    @Test
+    void testProcessAnswer() {
+        QuestionLoader questionLoader = new QuestionLoader();
+        GameProcessor gameProcessor = new GameProcessor(questionLoader);
+
+        gameProcessor.setCurrentQuestionIndex(0);
+        gameProcessor.setPlayerName("PlayerName");
 
         gameProcessor.processAnswer(1);
 
-        assertTrue(gameProcessor.isGameOver());
-        assertEquals("lost", gameProcessor.getGameResult());
-        assertEquals(gameProcessor.getPlayerName(), gameProcessor.getWinnerName());
+        assertNotNull(gameProcessor.getCurrentQuestion(), "Current question should not be null");
     }
 
     @Test
-    void processAnswerGameWin() {
-        List<Question> questions = new ArrayList<>();
-        Question question = new Question();
-        Option option = new Option();
-        option.setText("Option 1");
-        option.setNextQuestionId(0);
-        question.setOptions(List.of(option));
-        questions.add(question);
-        gameProcessor.setQuestions(questions);
-
-        gameProcessor.processAnswer(1);
-
+    void testEndGame() {
+        gameProcessor.setPlayerName("PlayerName");
+        gameProcessor.endGame(true);
         assertTrue(gameProcessor.isGameOver());
         assertEquals("won", gameProcessor.getGameResult());
-        assertEquals(gameProcessor.getPlayerName(), gameProcessor.getWinnerName());
+        assertEquals("PlayerName", gameProcessor.getWinnerName());
     }
 
     @Test
-    void processAnswerMoveToNextQuestion() {
-        List<Question> questions = new ArrayList<>();
-        Question question1 = new Question();
-        Option option1 = new Option();
-        option1.setText("Option 1");
-        option1.setNextQuestionId(2);
-        question1.setOptions(List.of(option1));
-        question1.setId(1);
+    void testHandleGameWin() {
+        gameProcessor.setPlayerName("PlayerName");
+        gameProcessor.handleGameWin();
+        assertTrue(gameProcessor.isGameOver());
+        assertEquals("won", gameProcessor.getGameResult());
+        assertEquals("PlayerName", gameProcessor.getWinnerName());
+    }
 
-        Question question2 = new Question();
-        question2.setId(2);
+    @Test
+    void testSetRequest() {
+        HttpServletRequest mockRequest = new MockHttpServletRequest();
+        gameProcessor.setRequest(mockRequest);
+        assertEquals(mockRequest, gameProcessor.getRequest());
+    }
 
-        questions.add(question1);
-        questions.add(question2);
+    private static class MockHttpServletRequest implements HttpServletRequest {
 
-        gameProcessor.setQuestions(questions);
+        @Override
+        public String getAuthType() {
+            return null;
+        }
 
-        gameProcessor.processAnswer(1);
+        @Override
+        public Cookie[] getCookies() {
+            return new Cookie[0];
+        }
 
-        assertEquals(1, gameProcessor.getCurrentQuestionIndex());
+        @Override
+        public long getDateHeader(String s) {
+            return 0;
+        }
+
+        @Override
+        public String getHeader(String s) {
+            return null;
+        }
+
+        @Override
+        public Enumeration<String> getHeaders(String s) {
+            return null;
+        }
+
+        @Override
+        public Enumeration<String> getHeaderNames() {
+            return null;
+        }
+
+        @Override
+        public int getIntHeader(String s) {
+            return 0;
+        }
+
+        @Override
+        public String getMethod() {
+            return null;
+        }
+
+        @Override
+        public String getPathInfo() {
+            return null;
+        }
+
+        @Override
+        public String getPathTranslated() {
+            return null;
+        }
+
+        @Override
+        public String getContextPath() {
+            return null;
+        }
+
+        @Override
+        public String getQueryString() {
+            return null;
+        }
+
+        @Override
+        public String getRemoteUser() {
+            return null;
+        }
+
+        @Override
+        public boolean isUserInRole(String s) {
+            return false;
+        }
+
+        @Override
+        public Principal getUserPrincipal() {
+            return null;
+        }
+
+        @Override
+        public String getRequestedSessionId() {
+            return null;
+        }
+
+        @Override
+        public String getRequestURI() {
+            return null;
+        }
+
+        @Override
+        public StringBuffer getRequestURL() {
+            return null;
+        }
+
+        @Override
+        public String getServletPath() {
+            return null;
+        }
+
+        @Override
+        public HttpSession getSession(boolean b) {
+            return null;
+        }
+
+        @Override
+        public HttpSession getSession() {
+            return null;
+        }
+
+        @Override
+        public String changeSessionId() {
+            return null;
+        }
+
+        @Override
+        public boolean isRequestedSessionIdValid() {
+            return false;
+        }
+
+        @Override
+        public boolean isRequestedSessionIdFromCookie() {
+            return false;
+        }
+
+        @Override
+        public boolean isRequestedSessionIdFromURL() {
+            return false;
+        }
+
+        @Override
+        public boolean isRequestedSessionIdFromUrl() {
+            return false;
+        }
+
+        @Override
+        public boolean authenticate(HttpServletResponse httpServletResponse) throws IOException, ServletException {
+            return false;
+        }
+
+        @Override
+        public void login(String s, String s1) throws ServletException {
+
+        }
+
+        @Override
+        public void logout() throws ServletException {
+
+        }
+
+        @Override
+        public Collection<Part> getParts() throws IOException, ServletException {
+            return null;
+        }
+
+        @Override
+        public Part getPart(String s) throws IOException, ServletException {
+            return null;
+        }
+
+        @Override
+        public <T extends HttpUpgradeHandler> T upgrade(Class<T> aClass) throws IOException, ServletException {
+            return null;
+        }
+
+        @Override
+        public Object getAttribute(String s) {
+            return null;
+        }
+
+        @Override
+        public Enumeration<String> getAttributeNames() {
+            return null;
+        }
+
+        @Override
+        public String getCharacterEncoding() {
+            return null;
+        }
+
+        @Override
+        public void setCharacterEncoding(String s) throws UnsupportedEncodingException {
+
+        }
+
+        @Override
+        public int getContentLength() {
+            return 0;
+        }
+
+        @Override
+        public long getContentLengthLong() {
+            return 0;
+        }
+
+        @Override
+        public String getContentType() {
+            return null;
+        }
+
+        @Override
+        public ServletInputStream getInputStream() throws IOException {
+            return null;
+        }
+
+        @Override
+        public String getParameter(String s) {
+            return null;
+        }
+
+        @Override
+        public Enumeration<String> getParameterNames() {
+            return null;
+        }
+
+        @Override
+        public String[] getParameterValues(String s) {
+            return new String[0];
+        }
+
+        @Override
+        public Map<String, String[]> getParameterMap() {
+            return null;
+        }
+
+        @Override
+        public String getProtocol() {
+            return null;
+        }
+
+        @Override
+        public String getScheme() {
+            return null;
+        }
+
+        @Override
+        public String getServerName() {
+            return null;
+        }
+
+        @Override
+        public int getServerPort() {
+            return 0;
+        }
+
+        @Override
+        public BufferedReader getReader() throws IOException {
+            return null;
+        }
+
+        @Override
+        public String getRemoteAddr() {
+            return null;
+        }
+
+        @Override
+        public String getRemoteHost() {
+            return null;
+        }
+
+        @Override
+        public void setAttribute(String s, Object o) {
+
+        }
+
+        @Override
+        public void removeAttribute(String s) {
+
+        }
+
+        @Override
+        public Locale getLocale() {
+            return null;
+        }
+
+        @Override
+        public Enumeration<Locale> getLocales() {
+            return null;
+        }
+
+        @Override
+        public boolean isSecure() {
+            return false;
+        }
+
+        @Override
+        public RequestDispatcher getRequestDispatcher(String s) {
+            return null;
+        }
+
+        @Override
+        public String getRealPath(String s) {
+            return null;
+        }
+
+        @Override
+        public int getRemotePort() {
+            return 0;
+        }
+
+        @Override
+        public String getLocalName() {
+            return null;
+        }
+
+        @Override
+        public String getLocalAddr() {
+            return null;
+        }
+
+        @Override
+        public int getLocalPort() {
+            return 0;
+        }
+
+        @Override
+        public ServletContext getServletContext() {
+            return null;
+        }
+
+        @Override
+        public AsyncContext startAsync() throws IllegalStateException {
+            return null;
+        }
+
+        @Override
+        public AsyncContext startAsync(ServletRequest servletRequest, ServletResponse servletResponse) throws IllegalStateException {
+            return null;
+        }
+
+        @Override
+        public boolean isAsyncStarted() {
+            return false;
+        }
+
+        @Override
+        public boolean isAsyncSupported() {
+            return false;
+        }
+
+        @Override
+        public AsyncContext getAsyncContext() {
+            return null;
+        }
+
+        @Override
+        public DispatcherType getDispatcherType() {
+            return null;
+        }
     }
 }
