@@ -120,4 +120,9 @@ public class GameProcessor {
     public void setRequest(HttpServletRequest request) {
         this.request = request;
     }
+
+    public HttpServletRequest getRequest() {
+        return request;
+    }
+
 }

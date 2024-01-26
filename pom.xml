@@ -48,7 +48,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.22</version> <!-- Перевірте на останню версію на момент вашого використання -->
+            <version>1.18.26</version>
             <scope>provided</scope>
         </dependency>
 
@@ -85,7 +85,7 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>3.12.4</version>
+            <version>5.2.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
